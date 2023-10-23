@@ -127,9 +127,12 @@ def reduce_mean(gen_loss, clf_loss, tot_loss, accuracy, n_gpu):
 
 
 def evaluate(sess, evX, evY, X, Y, gen_loss, clf_loss, accuracy, n_batch, desc, permute=False):
-    metrics = []
-    for xmb, ymb in iter_data(evX, evY, n_batch=n_batch, truncate=True, verbose=True):
-        metrics.append(sess.run([gen_loss[0], clf_loss[0], accuracy[0]], {X: xmb, Y: ymb}))
+    metrics = [
+        sess.run([gen_loss[0], clf_loss[0], accuracy[0]], {X: xmb, Y: ymb})
+        for xmb, ymb in iter_data(
+            evX, evY, n_batch=n_batch, truncate=True, verbose=True
+        )
+    ]
     eval_gen_loss, eval_clf_loss, eval_accuracy = [np.mean(m) for m in zip(*metrics)]
     print(f"{desc} gen: {eval_gen_loss:.4f} clf: {eval_clf_loss:.4f} acc: {eval_accuracy:.2f}")
 
@@ -176,7 +179,9 @@ def main(args):
     trainable_params, gen_logits, gen_loss, clf_loss, tot_loss, accuracy = create_model(x, y, args.n_gpu, hparams)
     reduce_mean(gen_loss, clf_loss, tot_loss, accuracy, args.n_gpu)
 
-    saver = tf.train.Saver(var_list=[tp for tp in trainable_params if not 'clf' in tp.name])
+    saver = tf.train.Saver(
+        var_list=[tp for tp in trainable_params if 'clf' not in tp.name]
+    )
     with tf.Session(config=tf.ConfigProto(allow_soft_placement=True, log_device_placement=False)) as sess:
         sess.run(tf.global_variables_initializer())
 

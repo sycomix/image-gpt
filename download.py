@@ -34,20 +34,29 @@ def main(args):
         size_to_shards = {"s": 32, "m": 32, "l": 64}
         shards = size_to_shards[args.model]
 
-        for filename in [f"model.ckpt-{args.ckpt}.data-{i:05d}-of-{shards:05d}" for i in range(shards)]:
-            urls.append(f"{base_url}/{filename}")
-        urls.append(f"{base_url}/model.ckpt-{args.ckpt}.index")
-        urls.append(f"{base_url}/model.ckpt-{args.ckpt}.meta")
-
+        urls.extend(
+            f"{base_url}/{filename}"
+            for filename in [
+                f"model.ckpt-{args.ckpt}.data-{i:05d}-of-{shards:05d}"
+                for i in range(shards)
+            ]
+        )
+        urls.extend(
+            (
+                f"{base_url}/model.ckpt-{args.ckpt}.index",
+                f"{base_url}/model.ckpt-{args.ckpt}.meta",
+            )
+        )
     # download the color clusters file
     if args.clusters:
         urls.append("https://openaipublic.blob.core.windows.net/image-gpt/color-clusters/kmeans_centers.npy")
 
     # download color clustered dataset
     if args.dataset:
-        for split in ["trX", "trY", "vaX", "vaY", "teX", "teY"]:
-            urls.append(f"https://openaipublic.blob.core.windows.net/image-gpt/datasets/{args.dataset}_{split}.npy")
-
+        urls.extend(
+            f"https://openaipublic.blob.core.windows.net/image-gpt/datasets/{args.dataset}_{split}.npy"
+            for split in ["trX", "trY", "vaX", "vaY", "teX", "teY"]
+        )
     # run the download
     for url in urls:
         filename = url.split("/")[-1]
@@ -55,7 +64,7 @@ def main(args):
         with open(f"{args.download_dir}/{filename}", "wb") as f:
             file_size = int(r.headers["content-length"])
             chunk_size = 1000
-            with tqdm(ncols=80, desc="Fetching " + filename, total=file_size, unit_scale=True) as pbar:
+            with tqdm(ncols=80, desc=f"Fetching {filename}", total=file_size, unit_scale=True) as pbar:
                 # 1k for chunk_size, since Ethernet packet size is around 1500 bytes
                 for chunk in r.iter_content(chunk_size=chunk_size):
                     f.write(chunk)
